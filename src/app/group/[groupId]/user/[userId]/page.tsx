@@ -2,14 +2,15 @@ import { getGroupBalances } from '@/lib/balances';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 
-export default async function UserBreakdownPage({ params }: { params: { groupId: string, userId: string } }) {
-  const group = await prisma.group.findUnique({ where: { id: params.groupId } });
-  const user = await prisma.user.findUnique({ where: { id: params.userId } });
+export default async function UserBreakdownPage({ params }: { params: Promise<{ groupId: string, userId: string }> }) {
+  const { groupId, userId } = await params;
+  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   
   if (!group || !user) return <div>Not found</div>;
 
-  const balancesObj = await getGroupBalances(params.groupId);
-  const balanceData = balancesObj[params.userId];
+  const balancesObj = await getGroupBalances(groupId);
+  const balanceData = balancesObj[userId];
 
   if (!balanceData) return <div>User not in group</div>;
 

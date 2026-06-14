@@ -1,8 +1,9 @@
 import { getImportJob } from '@/app/actions';
 import AnomalyResolver from './AnomalyResolver';
 
-export default async function ImportJobPage({ params }: { params: { jobId: string } }) {
-  const job = await getImportJob(params.jobId);
+export default async function ImportJobPage({ params }: { params: Promise<{ jobId: string }> }) {
+  const { jobId } = await params;
+  const job = await getImportJob(jobId);
 
   if (!job) {
     return <div>Job not found</div>;

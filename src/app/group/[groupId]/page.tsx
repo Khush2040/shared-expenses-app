@@ -2,11 +2,12 @@ import { getGroupBalances } from '@/lib/balances';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 
-export default async function GroupPage({ params }: { params: { groupId: string } }) {
-  const group = await prisma.group.findUnique({ where: { id: params.groupId } });
+export default async function GroupPage({ params }: { params: Promise<{ groupId: string }> }) {
+  const { groupId } = await params;
+  const group = await prisma.group.findUnique({ where: { id: groupId } });
   if (!group) return <div>Group not found</div>;
 
-  const balancesObj = await getGroupBalances(params.groupId);
+  const balancesObj = await getGroupBalances(groupId);
   const balances = Object.values(balancesObj).sort((a, b) => b.balance - a.balance);
 
   // Simple debt simplification: Who pays whom
