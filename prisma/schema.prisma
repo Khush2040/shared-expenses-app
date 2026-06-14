@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String          @id @default(uuid())
+  name                String          @unique
+  email               String?
+  createdAt           DateTime        @default(now())
+
+  groups              GroupMember[]
+  paidExpenses        Expense[]       @relation("ExpensePayer")
+  owedSplits          ExpenseSplit[]
+  paidSettlements     Settlement[]  @relation("SettlementPayer")
+  receivedSettlements Settlement[] @relation("SettlementPayee")
+}
+
+model Group {
+  id              String          @id @default(uuid())
+  name            String
+  defaultCurrency String          @default("INR")
+  createdAt       DateTime        @default(now())
+
+  members         GroupMember[]
+  expenses        Expense[]
+  settlements     Settlement[]
+  importJobs      ImportJob[]
+}
+
+model GroupMember {
+  id        String    @id @default(uuid())
+  groupId   String
+  userId    String
+  joinedAt  DateTime
+  leftAt    DateTime?
+
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model Expense {
+  id                String          @id @default(uuid())
+  groupId           String
+  paidByUserId      String?
+  description       String
+  amount            Float
+  currency          String
+  date              DateTime
+  notes             String?
+  originalCsvRowId  Int?
+  createdAt         DateTime        @default(now())
+
+  group             Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidBy            User?           @relation("ExpensePayer", fields: [paidByUserId], references: [id], onDelete: SetNull)
+  splits            ExpenseSplit[]
+}
+
+model ExpenseSplit {
+  id          String   @id @default(uuid())
+  expenseId   String
+  userId      String
+  amountOwed  Float
+  splitType   String   // EQUAL, EXACT, PERCENTAGE, SHARE
+  splitValue  Float?   // Stores percentage or share amount if applicable
+
+  expense     Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, userId])
+}
+
+model Settlement {
+  id              String   @id @default(uuid())
+  groupId         String
+  paidByUserId    String
+  paidToUserId    String
+  amount          Float
+  currency        String
+  date            DateTime
+
+  group           Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidBy          User     @relation("SettlementPayer", fields: [paidByUserId], references: [id], onDelete: Cascade)
+  paidTo          User     @relation("SettlementPayee", fields: [paidToUserId], references: [id], onDelete: Cascade)
+}
+
+model ImportJob {
+  id          String           @id @default(uuid())
+  groupId     String
+  status      String           // PENDING, COMPLETED, FAILED
+  createdAt   DateTime         @default(now())
+
+  group       Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  anomalies   ImportAnomaly[]
+}
+
+model ImportAnomaly {
+  id                 String     @id @default(uuid())
+  importJobId        String
+  rowIndex           Int
+  rowData            String     // JSON string
+  issueType          String
+  issueDescription   String
+  proposedAction     String
+  resolutionStatus   String     // PENDING, APPROVED, REJECTED
+
+  importJob          ImportJob  @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+}
